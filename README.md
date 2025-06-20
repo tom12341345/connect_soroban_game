@@ -1,1 +1,0 @@
-# connect_soroban_game
