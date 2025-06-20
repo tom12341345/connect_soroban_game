@@ -9,43 +9,24 @@
       font-family: system-ui, sans-serif;
       text-align: center;
       background: #f3f4f8;
-      padding: 1rem;
-      margin: 0;
+      padding: 2rem;
     }
     h1 {
       margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .controls label {
-      font-size: 1rem;
-    }
-    .game-area {
-      position: relative;
-      max-width: 100%;
-      margin: 0 auto;
-      touch-action: none;
-      overscroll-behavior: contain;
+      font-size: 2.5rem;
     }
     .row {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 2rem;
+      gap: 2rem;
+      margin-bottom: 20rem;
       position: relative;
       z-index: 1;
     }
     .card {
       background: white;
-      border-radius: 12px;
-      width: 100px;
+      border-radius: 16px;
+      width: 144px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -54,11 +35,11 @@
       overflow: hidden;
     }
     .card.numeral {
-      height: 100px;
-      font-size: 2rem;
+      height: 144px;
+      font-size: 4rem;
     }
     .card.soroban {
-      height: 150px;
+      height: 200px;
     }
     .soroban svg {
       width: 100%;
@@ -73,12 +54,22 @@
       pointer-events: none;
       z-index: 0;
     }
-
-    @media (min-width: 768px) {
-      h1 { font-size: 2.5rem; }
-      .card { width: 144px; }
-      .card.numeral { height: 144px; font-size: 4rem; }
-      .card.soroban { height: 200px; }
+    .game-area {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+      touch-action: none;
+      overscroll-behavior: contain;
+    }
+    .controls {
+      margin: 1rem auto 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .controls label {
+      font-size: 1.1rem;
     }
   </style>
 </head>
@@ -96,6 +87,7 @@
     <div class="row" id="sorobans"></div>
     <svg id="svg-lines"></svg>
   </div>
+
   <script>
     const numeralsEl = document.getElementById("numerals");
     const sorobansEl = document.getElementById("sorobans");
@@ -152,6 +144,7 @@
       };
 
       if (fiveActive) drawBead(24, 40);
+
       const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
       line.setAttribute("x1", "0");
       line.setAttribute("x2", "48");
@@ -161,22 +154,33 @@
       line.setAttribute("stroke-width", "4.5");
       svg.appendChild(line);
 
-      for (let i = 0; i < lower; i++) drawBead(24, 80 + i * 34);
+      for (let i = 0; i < lower; i++) {
+        drawBead(24, 80 + i * 34);
+      }
+
       return svg;
     }
 
     function showSuccessMessage() {
       const message = document.createElement("div");
       message.textContent = "🎉 Great job! You matched all correctly!";
-      Object.assign(message.style, {
-        position: "fixed", top: "50%", left: "50%",
-        transform: "translate(-50%, -50%)",
-        background: "#4caf50", color: "white",
-        padding: "1.5rem", fontSize: "1.5rem",
-        borderRadius: "1rem", zIndex: 10
-      });
+      message.style.position = "fixed";
+      message.style.top = "50%";
+      message.style.left = "50%";
+      message.style.transform = "translate(-50%, -50%)";
+      message.style.background = "#4caf50";
+      message.style.color = "white";
+      message.style.padding = "2rem";
+      message.style.fontSize = "2rem";
+      message.style.borderRadius = "1rem";
+      message.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)";
+      message.style.zIndex = 10;
       document.body.appendChild(message);
-      setTimeout(() => { message.remove(); startRound(); }, 1500);
+
+      setTimeout(() => {
+        message.remove();
+        startRound();
+      }, 1500);
     }
 
     function startRound() {
@@ -184,6 +188,7 @@
       sorobansEl.innerHTML = "";
       svg.innerHTML = "";
       lines = [];
+
       const { top, bottom } = generateRound();
 
       top.forEach(n => {
@@ -193,7 +198,11 @@
         div.dataset.id = n;
         div.onpointerdown = e => {
           const rect = svg.getBoundingClientRect();
-          active = { id: n, x1: e.clientX - rect.left, y1: e.clientY - rect.top };
+          active = {
+            id: n,
+            x1: e.clientX - rect.left,
+            y1: e.clientY - rect.top
+          };
         };
         numeralsEl.appendChild(div);
       });
@@ -223,7 +232,10 @@
         const alreadyConnected = lines.some(line => line.id === active.id);
         if (!alreadyConnected) {
           lines.push({ ...active });
-          if (lines.length === maxDigits) showSuccessMessage();
+          if (lines.length === maxDigits) {
+            showSuccessMessage();
+            return;
+          }
         }
       }
       active = null;
@@ -234,14 +246,20 @@
       svg.innerHTML = "";
       lines.forEach(l => {
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        Object.entries({ x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2 }).forEach(([k, v]) => line.setAttribute(k, v));
+        line.setAttribute("x1", l.x1);
+        line.setAttribute("y1", l.y1);
+        line.setAttribute("x2", l.x2);
+        line.setAttribute("y2", l.y2);
         line.setAttribute("stroke", "green");
         line.setAttribute("stroke-width", "4");
         svg.appendChild(line);
       });
-      if (active?.x2 !== undefined) {
+      if (active && active.x2 !== undefined) {
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        Object.entries({ x1: active.x1, y1: active.y1, x2: active.x2, y2: active.y2 }).forEach(([k, v]) => line.setAttribute(k, v));
+        line.setAttribute("x1", active.x1);
+        line.setAttribute("y1", active.y1);
+        line.setAttribute("x2", active.x2);
+        line.setAttribute("y2", active.y2);
         line.setAttribute("stroke", "#888");
         line.setAttribute("stroke-width", "4");
         line.setAttribute("stroke-dasharray", "6,4");
