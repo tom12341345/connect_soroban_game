@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connect the Dots – Soroban</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      text-align: center;
+      background: #f3f4f8;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+    }
+    .row {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 20rem;
+      position: relative;
+      z-index: 1;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      width: 144px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      user-select: none;
+      overflow: hidden;
+    }
+    .card.numeral {
+      height: 144px;
+      font-size: 4rem;
+    }
+    .card.soroban {
+      height: 200px;
+    }
+    .soroban svg {
+      width: 100%;
+      height: 100%;
+    }
+    svg#svg-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .game-area {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+      touch-action: none;
+      overscroll-behavior: contain;
+    }
+    .controls {
+      margin: 1rem auto 2rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .controls label {
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Connect the Dots – Soroban</h1>
+  <div class="controls">
+    <label>Number of digits: <input type="number" id="num-count" value="6" min="1" max="10"></label>
+    <label><input type="checkbox" id="range-0-4" checked> 0–4</label>
+    <label><input type="checkbox" id="range-5" checked> 5</label>
+    <label><input type="checkbox" id="range-6-9" checked> 6–9</label>
+    <button onclick="startRound()">Start</button>
+  </div>
+  <div class="game-area">
+    <div class="row" id="numerals" style="margin-top: 2rem;"></div>
+    <div class="row" id="sorobans"></div>
+    <svg id="svg-lines"></svg>
+  </div>
+
+  <script>
+    const numeralsEl = document.getElementById("numerals");
+    const sorobansEl = document.getElementById("sorobans");
+    const svg = document.getElementById("svg-lines");
+
+    let active = null;
+    let lines = [];
+    let maxDigits = 6;
+
+    function getDigitPool() {
+      const pool = [];
+      if (document.getElementById("range-0-4").checked) pool.push(...[0, 1, 2, 3, 4]);
+      if (document.getElementById("range-5").checked) pool.push(5);
+      if (document.getElementById("range-6-9").checked) pool.push(...[6, 7, 8, 9]);
+      return pool.length ? pool : [0,1,2,3,4,5,6,7,8,9];
+    }
+
+    function generateRound() {
+      const digits = new Set();
+      maxDigits = parseInt(document.getElementById("num-count").value || "6", 10);
+      const pool = getDigitPool();
+      while (digits.size < maxDigits && digits.size < pool.length) {
+        const val = pool[Math.floor(Math.random() * pool.length)];
+        digits.add(val);
+      }
+      const top = Array.from(digits).sort((a, b) => a - b);
+      const bottom = shuffle([...top]);
+      return { top, bottom };
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function createSorobanSVG(n) {
+      const fiveActive = n >= 5;
+      const lower = n % 5;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 48 200");
+
+      const drawBead = (cx, cy) => {
+        const points = [
+          [cx - 32, cy], [cx - 16, cy - 16], [cx + 16, cy - 16],
+          [cx + 32, cy], [cx + 16, cy + 16], [cx - 16, cy + 16]
+        ].map(p => p.join(",")).join(" ");
+        const hex = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        hex.setAttribute("points", points);
+        hex.setAttribute("fill", "#00aaff");
+        svg.appendChild(hex);
+      };
+
+      if (fiveActive) drawBead(24, 40);
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", "0");
+      line.setAttribute("x2", "48");
+      line.setAttribute("y1", "60");
+      line.setAttribute("y2", "60");
+      line.setAttribute("stroke", "#999");
+      line.setAttribute("stroke-width", "4.5");
+      svg.appendChild(line);
+
+      for (let i = 0; i < lower; i++) {
+        drawBead(24, 80 + i * 34);
+      }
+
+      return svg;
+    }
+
+    function showSuccessMessage() {
+      const message = document.createElement("div");
+      message.textContent = "🎉 Great job! You matched all correctly!";
+      message.style.position = "fixed";
+      message.style.top = "50%";
+      message.style.left = "50%";
+      message.style.transform = "translate(-50%, -50%)";
+      message.style.background = "#4caf50";
+      message.style.color = "white";
+      message.style.padding = "2rem";
+      message.style.fontSize = "2rem";
+      message.style.borderRadius = "1rem";
+      message.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)";
+      message.style.zIndex = 10;
+      document.body.appendChild(message);
+
+      setTimeout(() => {
+        message.remove();
+        startRound();
+      }, 1500);
+    }
+
+    function startRound() {
+      numeralsEl.innerHTML = "";
+      sorobansEl.innerHTML = "";
+      svg.innerHTML = "";
+      lines = [];
+
+      const { top, bottom } = generateRound();
+
+      top.forEach(n => {
+        const div = document.createElement("div");
+        div.className = "card numeral";
+        div.textContent = n;
+        div.dataset.id = n;
+        div.onpointerdown = e => {
+          const rect = svg.getBoundingClientRect();
+          active = {
+            id: n,
+            x1: e.clientX - rect.left,
+            y1: e.clientY - rect.top
+          };
+        };
+        numeralsEl.appendChild(div);
+      });
+
+      bottom.forEach(n => {
+        const div = document.createElement("div");
+        div.className = "card soroban";
+        div.dataset.id = n;
+        div.appendChild(createSorobanSVG(n));
+        sorobansEl.appendChild(div);
+      });
+    }
+
+    document.body.onpointermove = e => {
+      if (!active) return;
+      const rect = svg.getBoundingClientRect();
+      active.x2 = e.clientX - rect.left;
+      active.y2 = e.clientY - rect.top;
+      draw();
+    };
+
+    document.body.onpointerup = e => {
+      if (!active) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const id = el?.closest(".card")?.dataset?.id;
+      if (id == active.id) {
+        const alreadyConnected = lines.some(line => line.id === active.id);
+        if (!alreadyConnected) {
+          lines.push({ ...active });
+          if (lines.length === maxDigits) {
+            showSuccessMessage();
+            return;
+          }
+        }
+      }
+      active = null;
+      draw();
+    };
+
+    function draw() {
+      svg.innerHTML = "";
+      lines.forEach(l => {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", l.x1);
+        line.setAttribute("y1", l.y1);
+        line.setAttribute("x2", l.x2);
+        line.setAttribute("y2", l.y2);
+        line.setAttribute("stroke", "green");
+        line.setAttribute("stroke-width", "4");
+        svg.appendChild(line);
+      });
+      if (active && active.x2 !== undefined) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", active.x1);
+        line.setAttribute("y1", active.y1);
+        line.setAttribute("x2", active.x2);
+        line.setAttribute("y2", active.y2);
+        line.setAttribute("stroke", "#888");
+        line.setAttribute("stroke-width", "4");
+        line.setAttribute("stroke-dasharray", "6,4");
+        svg.appendChild(line);
+      }
+    }
+
+    startRound();
+  </script>
+</body>
+</html>
